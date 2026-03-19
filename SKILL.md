@@ -502,3 +502,73 @@ After every new site build, ALWAYS add the client to the Advanced Marketing clie
 - `service_type` = Always `web_design` for fishing guide sites
 
 This auto-populates web_design task templates for the client. The client appears in the admin view and can log in to see their project status.
+
+## Post-Build Playwright QA (MANDATORY — ~20 minutes)
+After the site is deployed, run a comprehensive Playwright QA session testing EVERYTHING on both desktop (1920x1080) and mobile (375x812). This is NOT optional. Spend up to 20 minutes on QA. Fix every issue found before considering the build complete.
+
+**Create a Playwright QA script (`qa.mjs`) that tests:**
+
+### Desktop (1920x1080)
+1. **Hero section** — screenshot, verify background image loads (not blank/solid color), badge text visible, CTA buttons present
+2. **Nav on scroll** — scroll down 500px, screenshot, verify: logo visible and readable, nav links visible, hamburger hidden on desktop, background is white/opaque
+3. **All sections exist** — scroll to each section anchor (#about, #species, #seasons, #boat, #pricing, #gallery, #booking, #testimonials, #prepare, #area, #faq, #contact) and verify each has content (not empty)
+4. **Gallery** — verify at least 8 images load (no broken images), click one to test lightbox opens
+5. **Pricing cards** — verify 3 cards visible with dollar amounts
+6. **Booking form** — fill out test data, verify price calculator updates, do NOT submit
+7. **Footer** — verify admin link exists, social icons present, copyright text
+8. **Social media links** — click each, verify they open (don't follow, just check href exists)
+9. **"Get Directions" link** — verify it points to Google Maps
+10. **Fishing license link** — verify href is correct state fishing license URL
+11. **FAQ accordion** — click 3 items, verify they expand/collapse
+12. **Species cards** — verify correct count (8+), each has icon/title/description
+
+### Mobile (375x812)
+13. **Hero** — screenshot, verify text doesn't overflow, stats wrap cleanly
+14. **Hamburger menu** — verify visible at top, click it, verify menu opens fullscreen with readable links
+15. **Hamburger on scroll** — scroll down, verify hamburger still visible (navy on white bg)
+16. **Close menu** — click hamburger again or a link, verify menu closes
+17. **Pricing cards** — verify they stack single-column
+18. **Gallery** — verify 2-column grid on mobile
+19. **Booking form** — verify form fields don't overflow
+20. **Top bar (if present)** — verify phone number visible, long text hidden on mobile
+21. **Contact cards** — verify single-column stack
+
+### Admin Dashboard
+22. **Login page loads** — navigate to /admin.html, verify password input visible
+23. **Login works** — enter password, verify dashboard appears
+24. **Bookings tab** — verify it shows (even if empty)
+25. **Calendar tab** — switch to calendar, verify month grid renders
+26. **Settings tab** — switch to settings, verify Stripe/PayPal sections exist
+27. **Fleet management (if multi-boat)** — verify boats are listed with colors
+
+### Per-Boat Booking (if applicable)
+28. **Fleet cards** — verify each boat has an image and "Book" button
+29. **Booking links** — verify each button has a valid href (FareHarbor or other booking URL)
+
+**QA script pattern:**
+```javascript
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+
+// Desktop
+const desktop = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+const dp = await desktop.newPage();
+await dp.goto(SITE_URL, { waitUntil: 'networkidle' });
+// ... run desktop tests, take screenshots ...
+
+// Mobile
+const mobile = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true });
+const mp = await mobile.newPage();
+await mp.goto(SITE_URL, { waitUntil: 'networkidle' });
+// ... run mobile tests, take screenshots ...
+
+// Admin
+const admin = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+const ap = await admin.newPage();
+await ap.goto(SITE_URL + '/admin.html', { waitUntil: 'networkidle' });
+// ... test login, tabs, settings ...
+
+await browser.close();
+```
+
+**On ANY failure:** Fix the issue immediately, redeploy, and re-run the failing test. Do not skip failures.
